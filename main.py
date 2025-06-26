@@ -53,7 +53,7 @@ class Image2ExcelCore:
             if self.product_file.suffix.lower() == '.txt':
                 with open(self.product_file, 'r', encoding='utf-8') as f:
                     codes = [line.strip() for line in f if line.strip()]
-            elif self.product_file.suffix.lower() == '.xlsm':
+            elif self.product_file.suffix.lower() == '.xlsx':
                 from openpyxl import load_workbook
                 wb = load_workbook(self.product_file, data_only=True)
                 sheet = wb.active

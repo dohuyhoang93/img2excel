@@ -179,7 +179,7 @@ class Image2ExcelGUI:
         widget.bind("<Leave>", lambda e: tooltip.withdraw())
 
     def browse_product_file(self):
-        path = filedialog.askopenfilename(filetypes=[("Product List", "*.txt *.xlsm")])
+        path = filedialog.askopenfilename(filetypes=[("Product List", "*.txt *.xlsx")])
         if path:
             self.product_path.set(path)
 
