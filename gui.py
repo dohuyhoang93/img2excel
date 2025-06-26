@@ -210,7 +210,7 @@ class Image2ExcelGUI:
     def update_progress(self, total, current):
         percent = (current / total) * 100
         self.root.after(0, lambda: self.progress_value.set(percent))
-        self.root.after(0, lambda: self.status_text.set(f"Progress: {percent:.1f}% | Started: {self.start_time.strftime('%H:%M:%S')}"))
+        self.root.after(0, lambda: self.status_text.set(f"Started: {self.start_time.strftime('%H:%M:%S')}"))
         self.root.after(0, lambda: self.progress_label.configure(text=f"Progress: {percent:.1f}%"))
 
     def filter_log(self, *args):
