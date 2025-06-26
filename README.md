@@ -48,3 +48,4 @@ Image2Excel chỉ chạy trên Windows.
 1. Chỉnh màu Menu bar đồng bộ với theme
 2. Chỉnh vị trí filter canvas cho đẹp hơn
 3. Thêm phần hướng dẫn sử dụng trong Menu Help
+4. Cho user tùy chỉnh các hậu tố tìm kiếm: `01`, `06` ngay trên GUI.
