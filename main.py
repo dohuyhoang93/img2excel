@@ -1,14 +1,13 @@
-# main.py
-import code
 import os
 import shutil
 import threading
+import time
 from pathlib import Path
 from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as ExcelImage
 from openpyxl.styles import Alignment
-from PIL import Image as PILImage
+from itertools import chain
 
 class Image2ExcelCore:
     def __init__(self, logger_callback=None):
@@ -20,10 +19,10 @@ class Image2ExcelCore:
     def _log(self, msg):
         self.logger_callback(msg)
 
-    def start(self, product_file_path, image_folder, output_dir):
+    def start(self, product_file_path, image_folder, matched_folder):
         self.product_file = Path(product_file_path)
         self.image_folder = Path(image_folder)
-        self.output_dir = Path(output_dir)
+        self.matched_folder = Path(matched_folder)
         self._pause_event.set()
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._run)
@@ -44,8 +43,17 @@ class Image2ExcelCore:
                 self._log("❌ Định dạng file không hợp lệ.")
                 return
 
-            matched_folder = self.image_folder / "ImageMatched"
-            matched_folder.mkdir(exist_ok=True)
+            # Kiểm tra và làm trống ImageMatched
+            if self.matched_folder.exists():
+                for file in chain(
+                    self.matched_folder.glob("*.[jJ][pP][gG]"),
+                    self.matched_folder.glob("*.[pP][nN][gG]"),
+                    self.matched_folder.glob("*.[jJ][pP][eE][gG]")
+                ):
+                    file.unlink()
+                    self._log(f"🗑️ Đã xóa: {file}")
+            else:
+                self.matched_folder.mkdir(exist_ok=True)
 
             wb = Workbook()
             ws = wb.active
@@ -54,57 +62,68 @@ class Image2ExcelCore:
             ws.column_dimensions['B'].width = 35
             ws.column_dimensions['C'].width = 35
 
+            # Xây dựng chỉ mục
+            suffixes = ["01", "06"]
+            self.files_by_suffix = {suffix: [] for suffix in suffixes}
+            for file in self.image_folder.rglob("*"):
+                if file.suffix.lower() in ['.jpg', '.png', '.jpeg']:
+                    if self.matched_folder in file.parents:
+                        continue
+                    name = file.stem.lower()
+                    normalized_name = name.replace("-", "").replace("_", "").replace(".", "").replace(" ", "")
+                    for suffix in suffixes:
+                        if normalized_name.endswith(suffix):
+                            self.files_by_suffix[suffix].append((file, normalized_name))
+
             for idx, code in enumerate(codes, start=2):
                 if self._stop_event.is_set():
                     self._log("🛑 Đã dừng xử lý.")
                     break
                 while not self._pause_event.is_set():
-                    threading.Event().wait(0.1)
+                    time.sleep(0.1)
 
-                # img1_name = f"{code}.01"
-                # img6_name = f"{code}.06"
-                # img1_path = self._find_image(img1_name)
-                # img6_path = self._find_image(img6_name)
                 img1_path = self._find_image(code, "01")
                 img6_path = self._find_image(code, "06")
 
-                # ws.cell(row=idx, column=1).value = code
                 cell = ws.cell(row=idx, column=1)
                 cell.value = code
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
                 if img1_path:
-                    copied1 = shutil.copy(img1_path, matched_folder)
+                    copied1 = shutil.copy(img1_path, self.matched_folder)
                     excel_img1 = ExcelImage(copied1)
                     excel_img1.width, excel_img1.height = 200, 200
                     ws.add_image(excel_img1, f"B{idx}")
                 if img6_path:
-                    copied6 = shutil.copy(img6_path, matched_folder)
+                    copied6 = shutil.copy(img6_path, self.matched_folder)
                     excel_img6 = ExcelImage(copied6)
                     excel_img6.width, excel_img6.height = 200, 200
                     ws.add_image(excel_img6, f"C{idx}")
 
-                # Tăng chiều cao hàng cho phù hợp ảnh
                 ws.row_dimensions[idx].height = 150
 
+                if img1_path and img6_path:
+                    self._log(f"✅ {code}: OK")
+                elif img1_path:
+                    self._log(f"⚠️ {code}: Thiếu ảnh .06")
+                elif img6_path:
+                    self._log(f"⚠️ {code}: Thiếu ảnh .01")
+                else:
+                    self._log(f"⚠️ {code}: Thiếu cả hai ảnh .01 và .06")
 
-                self._log(f"✅ {code}: {'OK' if img1_path and img6_path else 'Thiếu ảnh'}")
-
-            out_file = matched_folder / f"output_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
+            out_file = self.matched_folder / f"output_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
             wb.save(out_file)
             self._log(f"📦 Đã lưu Excel: {out_file}")
 
         except Exception as e:
             self._log(f"❌ Lỗi: {e}")
 
-    def _find_image(self, product_code, suffix: str):
+    def _find_image(self, product_code, suffix):
         code = product_code.lower()
-        suffix = suffix.strip()
-
-        for ext in ['.jpg', '.png', '.jpeg']:
-            for file in self.image_folder.rglob(f"*{ext}"):
-                name = file.stem.lower()
-                if code in name and name.endswith(suffix):
+        normalized_code = code.replace("-", "").replace("_", "").replace(".", "").replace(" ", "")
+        if suffix in self.files_by_suffix:
+            for file, normalized_name in self.files_by_suffix[suffix]:
+                if normalized_name.startswith(normalized_code) and normalized_name.endswith(suffix):
                     return file
         return None
 
