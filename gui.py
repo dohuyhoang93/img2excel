@@ -14,7 +14,16 @@ class Image2ExcelGUI:
         self.root = tb.Window(themename="solar")
         self.root.title("Image2Excel")
         self.root.minsize(600, 500)
-        self.root.iconbitmap("icon.ico")
+        # Xác định đường dẫn đến icon.ico
+        if getattr(sys, 'frozen', False):
+            # Nếu chạy từ .exe, sử dụng sys._MEIPASS
+            base_path = sys._MEIPASS
+        else:
+            # Nếu chạy từ mã nguồn, sử dụng thư mục hiện tại
+            base_path = os.path.abspath(".")
+        
+        icon_path = os.path.join(base_path, "icon.ico")
+        self.root.iconbitmap(icon_path)
         self.status_text = tk.StringVar(value="Ready")
         self.progress_value = tk.DoubleVar(value=0)
         self.filter_var = tk.StringVar(value="Tất cả")
@@ -86,16 +95,16 @@ class Image2ExcelGUI:
         scrollbar.grid(row=0, column=1, sticky='ns')
         table_frame.rowconfigure(0, weight=1)
 
-        self.tree = tb.Treeview(self.scrollable_frame, columns=("Code", "Status"), show='headings', height=30)
+        self.tree = tb.Treeview(self.scrollable_frame, columns=("Code", "Status"), show='headings', height=15)
         self.tree.heading("Code", text="Mã SP")
         self.tree.heading("Status", text="Trạng thái")
-        self.tree.column("Code", width=300)
-        self.tree.column("Status", width=400)
+        self.tree.column("Code", width=100)
+        self.tree.column("Status", width=300)
         self.tree.tag_configure('ok', foreground='#00ff00')
         self.tree.tag_configure('warning', foreground='#ffff00')
         self.tree.tag_configure('error', foreground='#ff0000')
         self.tree.grid(row=0, column=0, sticky='nsew')
-        self.scrollable_frame.columnconfigure(0, weight=2)
+        self.scrollable_frame.columnconfigure(0, weight=1)
 
         status_frame = tb.Frame(self.root)
         status_frame.grid(row=2, column=0, sticky='ew')
@@ -118,7 +127,7 @@ class Image2ExcelGUI:
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="View", menu=view_menu)
         view_menu.add_command(label="Light Mode", command=lambda: self.toggle_theme("cosmo"))
-        view_menu.add_command(label="Dark Mode", command=lambda: self.toggle_theme("darkly"))
+        view_menu.add_command(label="Dark Mode", command=lambda: self.toggle_theme("solar"))
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about)
@@ -126,9 +135,14 @@ class Image2ExcelGUI:
     def show_about(self):
         about_window = tk.Toplevel(self.root)
         about_window.title("About Image2Excel")
-        about_window.iconbitmap("icon.ico")  # Áp dụng icon cho hộp thoại
+        # Áp dụng logic tương tự cho hộp thoại About
+        if getattr(sys, 'frozen', False):
+            icon_path = os.path.join(sys._MEIPASS, "icon.ico")
+        else:
+            icon_path = os.path.join(os.path.abspath("."), "icon.ico")
+        about_window.iconbitmap(icon_path)
         about_window.geometry("300x200")
-        about_label = tk.Label(about_window, text="Image2Excel\nVersion: 1.0\nDeveloped by: Do Huy Hoang Fujikin Vietnam Co.,ltd\nDate: June 26, 2025", justify="center")
+        about_label = tk.Label(about_window, text="Image2Excel\nVersion: 1.0\nDeveloped by: Do Huy Hoang Fujikin Vietnam\nDate: June 26, 2025", justify="center")
         about_label.pack(expand=True)
         close_button = tk.Button(about_window, text="Close", command=about_window.destroy)
         close_button.pack(pady=10)
@@ -210,7 +224,7 @@ class Image2ExcelGUI:
     def update_progress(self, total, current):
         percent = (current / total) * 100
         self.root.after(0, lambda: self.progress_value.set(percent))
-        self.root.after(0, lambda: self.status_text.set(f"Started: {self.start_time.strftime('%H:%M:%S')}"))
+        self.root.after(0, lambda: self.status_text.set(f"Progress: {percent:.1f}% | Started: {self.start_time.strftime('%H:%M:%S')}"))
         self.root.after(0, lambda: self.progress_label.configure(text=f"Progress: {percent:.1f}%"))
 
     def filter_log(self, *args):
@@ -236,8 +250,8 @@ class Image2ExcelGUI:
 
     def toggle_theme(self, theme):
         self.root.style.theme_use(theme)
-        self.status_label.configure(foreground=self.root.style.colors.fg)  # Sử dụng fg thay contrast_color
-        self.progress_label.configure(foreground=self.root.style.colors.fg)  # Sử dụng fg thay contrast_color
+        self.status_label.configure(foreground=self.root.style.colors.fg)
+        self.progress_label.configure(foreground=self.root.style.colors.fg)
         self.status_text.set(f"Switched to {theme.capitalize()} Mode")
 
     @property
