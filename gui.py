@@ -1,34 +1,106 @@
 import tkinter as tk
-import tkinter.ttk as ttk
-from tkinter import filedialog
+from tkinter import ttk, filedialog, messagebox
 import queue
+import os
+import sys
+import subprocess
+from pathlib import Path
+from datetime import datetime
+import ttkbootstrap as tb
 
 class Image2ExcelGUI:
     def __init__(self, core_class):
         self.core = core_class()
-        self.root = tk.Tk()
+        self.root = tb.Window(themename="darkly")
         self.root.title("Image2Excel")
-        self.root.configure(bg="#222222")
-        self.root.minsize(600, 400)
+        self.root.minsize(600, 500)
         self.status_text = tk.StringVar(value="Ready")
         self.progress_value = tk.DoubleVar(value=0)
         self.filter_var = tk.StringVar(value="Tất cả")
-        self.all_iids = []  # Danh sách master chứa (IID, tag)
+        self.all_iids = []
         self.log_queue = queue.Queue()
         self.progress_queue = queue.Queue()
+        self.export_folder = None
+        self.start_time = None
         self.build_ui()
         self.root.after(50, self.poll_queues)
+        self.root.bind('<Control-r>', lambda e: self.run_process())
+        self.root.bind('<Control-s>', lambda e: self.core.stop())
 
     def build_ui(self):
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('TLabel', background='#222222', foreground='#ffffff')
-        style.configure('TEntry', fieldbackground='#333333', foreground='#ffffff')
-        style.configure('TButton', background='#007acc', foreground='#ffffff')
-        style.configure('Treeview', background='#111111', fieldbackground='#111111', foreground='#ffffff')
-        style.configure('Treeview.Heading', background='#333333', foreground='#ffffff')
+        main_frame = tb.Labelframe(self.root, text="Controls", padding=10)
+        main_frame.grid(row=0, column=0, sticky='nsew')
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1, minsize=200)
+        self.root.rowconfigure(1, weight=2, minsize=300)
+        main_frame.columnconfigure(0, weight=1)
 
-        # MenuBar
+        input_frame = tb.Frame(main_frame)
+        input_frame.grid(row=0, column=0, sticky='ew')
+        input_frame.columnconfigure(1, weight=1)
+        for i, (label, var, cmd) in enumerate([
+            ("Product list:", self.product_path, self.browse_product_file),
+            ("Image folder:", self.image_path, self.browse_image_folder),
+            ("Output folder:", self.matched_path, self.browse_matched_folder)
+        ]):
+            tb.Label(input_frame, text=label).grid(row=i, column=0, sticky='w', padx=5, pady=5)
+            tb.Entry(input_frame, textvariable=var).grid(row=i, column=1, sticky='ew', padx=5, pady=5)
+            tb.Button(input_frame, text="…", command=cmd).grid(row=i, column=2, padx=5, pady=5)
+
+        button_frame = tb.Frame(main_frame)
+        button_frame.grid(row=1, column=0, sticky='ew', pady=(10, 5))
+        button_commands = {
+            "Run": self.run_process,
+            "Pause": self.core.pause,
+            "Resume": self.core.resume,
+            "Stop": self.core.stop
+        }
+        for i, btn_text in enumerate(["Run", "Pause", "Resume", "Stop"]):
+            btn = tb.Button(button_frame, text=btn_text, command=button_commands[btn_text])
+            btn.grid(row=0, column=i, padx=5, sticky='ew')
+            button_frame.columnconfigure(i, weight=1)
+            btn.configure(command=lambda x=btn_text: [button_commands[x](), self.set_tooltip(btn, f"{btn_text} (Alt+{btn_text[0]})")])
+
+        self.progressbar = tb.Progressbar(main_frame, variable=self.progress_value, mode='determinate')
+        self.progressbar.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
+
+        filter_frame = tb.Frame(main_frame)
+        filter_frame.grid(row=3, column=0, sticky='ew', pady=(5, 10))
+        filter_frame.columnconfigure(0, weight=1)
+        tb.Label(filter_frame, text="Filter:").grid(row=0, column=0, sticky='w', padx=5)
+        tb.Combobox(filter_frame, textvariable=self.filter_var, values=["Tất cả", "OK", "Thiếu ảnh", "Lỗi"], state='readonly').grid(row=0, column=1, sticky='w', padx=5)
+        self.filter_var.trace('w', self.filter_log)
+
+        table_frame = tb.Labelframe(self.root, text="Log Table", padding=10)
+        table_frame.grid(row=1, column=0, sticky='nsew')
+        table_frame.columnconfigure(0, weight=1)
+
+        canvas = tk.Canvas(table_frame)
+        scrollbar = tb.Scrollbar(table_frame, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = tb.Frame(canvas)
+        self.scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.grid(row=0, column=0, sticky='nsew')
+        scrollbar.grid(row=0, column=1, sticky='ns')
+        table_frame.rowconfigure(0, weight=1)
+
+        self.tree = tb.Treeview(self.scrollable_frame, columns=("Code", "Status"), show='headings', height=30)
+        self.tree.heading("Code", text="Mã SP")
+        self.tree.heading("Status", text="Trạng thái")
+        self.tree.column("Code", width=300)
+        self.tree.column("Status", width=500)
+        self.tree.tag_configure('ok', foreground='#00ff00')
+        self.tree.tag_configure('warning', foreground='#ffff00')
+        self.tree.tag_configure('error', foreground='#ff0000')
+        self.tree.grid(row=0, column=0, sticky='nsew')
+        self.scrollable_frame.columnconfigure(0, weight=1)
+
+        status_frame = tb.Frame(self.root)
+        status_frame.grid(row=2, column=0, sticky='ew')
+        tb.Label(status_frame, textvariable=self.status_text, background='#222222').grid(row=0, column=0, sticky='w', padx=5)
+        tb.Label(status_frame, text="Progress: 0%", background='#222222').grid(row=0, column=1, sticky='e', padx=5)
+
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
         file_menu = tk.Menu(menubar, tearoff=0)
@@ -37,79 +109,27 @@ class Image2ExcelGUI:
         file_menu.add_command(label="Select Image Folder", command=self.browse_image_folder)
         file_menu.add_command(label="Select Output Folder", command=self.browse_matched_folder)
         file_menu.add_separator()
+        file_menu.add_command(label="Open Export Folder", command=self.open_export_folder)
+        file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
+        view_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Light Mode", command=lambda: self.toggle_theme("flatly"))
+        view_menu.add_command(label="Dark Mode", command=lambda: self.toggle_theme("darkly"))
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About", command=self.show_about)
 
-        # Main frame
-        main_frame = ttk.Frame(self.root, padding=10)
-        main_frame.grid(row=0, column=0, sticky='nsew')
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=1)
+    def show_about(self):
+        messagebox.showinfo("About Image2Excel", "Image2Excel\nVersion: 1.0\nDeveloped by: Do Huy Hoang KTSX Fujikin Co.ltd\nDate: June 26, 2025")
 
-        # Input frame
-        input_frame = ttk.Frame(main_frame)
-        input_frame.grid(row=0, column=0, sticky='ew')
-        input_frame.columnconfigure(1, weight=1)
-
-        # Row 1: Product list
-        ttk.Label(input_frame, text="Product list:").grid(row=0, column=0, sticky='w', padx=5, pady=5)
-        self.product_path = tk.StringVar()
-        ttk.Entry(input_frame, textvariable=self.product_path).grid(row=0, column=1, sticky='ew', padx=5, pady=5)
-        ttk.Button(input_frame, text="…", command=self.browse_product_file).grid(row=0, column=2, padx=5, pady=5)
-
-        # Row 2: Image folder
-        ttk.Label(input_frame, text="Image folder:").grid(row=1, column=0, sticky='w', padx=5, pady=5)
-        self.image_path = tk.StringVar()
-        ttk.Entry(input_frame, textvariable=self.image_path).grid(row=1, column=1, sticky='ew', padx=5, pady=5)
-        ttk.Button(input_frame, text="…", command=self.browse_image_folder).grid(row=1, column=2, padx=5, pady=5)
-
-        # Row 3: Output folder
-        ttk.Label(input_frame, text="Output folder:").grid(row=2, column=0, sticky='w', padx=5, pady=5)
-        self.matched_path = tk.StringVar()
-        ttk.Entry(input_frame, textvariable=self.matched_path).grid(row=2, column=1, sticky='ew', padx=5, pady=5)
-        ttk.Button(input_frame, text="…", command=self.browse_matched_folder).grid(row=2, column=2, padx=5, pady=5)
-
-        # Button frame
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, sticky='ew', pady=10)
-        button_frame.columnconfigure(0, weight=1)
-        ttk.Button(button_frame, text="Run", command=self.run_process).grid(row=0, column=0, padx=5)
-        ttk.Button(button_frame, text="Pause", command=self.core.pause).grid(row=0, column=1, padx=5)
-        ttk.Button(button_frame, text="Resume", command=self.core.resume).grid(row=0, column=2, padx=5)
-        ttk.Button(button_frame, text="Stop", command=self.core.stop).grid(row=0, column=3, padx=5)
-
-        # Progressbar
-        self.progressbar = ttk.Progressbar(main_frame, variable=self.progress_value, mode='determinate')
-        self.progressbar.grid(row=4, column=0, sticky='ew', padx=5, pady=5)
-
-        # Filter frame
-        filter_frame = ttk.Frame(main_frame)
-        filter_frame.grid(row=5, column=0, sticky='ew', padx=5, pady=5)
-        filter_frame.columnconfigure(0, weight=1)
-        ttk.Label(filter_frame, text="Filter:").grid(row=0, column=0, sticky='w', padx=5)
-        ttk.Combobox(filter_frame, textvariable=self.filter_var, values=["Tất cả", "OK", "Thiếu ảnh", "Lỗi"], state='readonly').grid(row=0, column=1, sticky='w', padx=5)
-        self.filter_var.trace('w', self.filter_log)
-
-        # Treeview
-        self.tree = ttk.Treeview(main_frame, columns=("Code", "Status"), show='headings', height=10)
-        self.tree.heading("Code", text="Mã SP")
-        self.tree.heading("Status", text="Trạng thái")
-        self.tree.column("Code", width=100)
-        self.tree.column("Status", width=300)
-        self.tree.tag_configure('ok', foreground='#00ff00')
-        self.tree.tag_configure('warning', foreground='#ffff00')
-        self.tree.tag_configure('error', foreground='#ff0000')
-        self.tree.grid(row=6, column=0, sticky='nsew', padx=5, pady=5)
-        main_frame.rowconfigure(6, weight=1)
-
-        # Status bar
-        ttk.Label(main_frame, textvariable=self.status_text, background='#222222', foreground='#ffffff').grid(row=7, column=0, sticky='ew', padx=5, pady=5)
-
-    def enqueue_log(self, item):
-        self.log_queue.put(item)
-
-    def enqueue_progress(self, item):
-        self.progress_queue.put(item)
+    def set_tooltip(self, widget, text):
+        tooltip = tk.Toplevel(widget)
+        tooltip.withdraw()
+        tooltip.attributes('-topmost', True)
+        tk.Label(tooltip, text=text, background='#ffffe0', relief='solid', borderwidth=1).pack()
+        widget.bind("<Enter>", lambda e: tooltip.deiconify())
+        widget.bind("<Leave>", lambda e: tooltip.withdraw())
 
     def browse_product_file(self):
         path = filedialog.askopenfilename(filetypes=[("Product List", "*.txt *.xlsm")])
@@ -133,20 +153,40 @@ class Image2ExcelGUI:
         if not product or not images or not matched:
             self.root.after(0, lambda: self.log(None, "⚠️ Chưa chọn đầy đủ đường dẫn.", 'error'))
             return
-        self.status_text.set("Processing...")
+        self.status_text.set(f"Running since {datetime.now().strftime('%H:%M:%S')}")
+        self.start_time = datetime.now()
         self.progress_value.set(0)
         self.tree.delete(*self.tree.get_children())
         self.all_iids.clear()
+        self.export_folder = Path(matched) / "Image2Excel_Export"
         self.core.start(product, images, matched,
                        log_queue=self.enqueue_log,
                        progress_queue=self.enqueue_progress)
 
+    def open_export_folder(self):
+        folder = getattr(self, "export_folder", None)
+        if not folder or not folder.exists():
+            self.log(None, "⚠️ Chưa có thư mục xuất hoặc nó chưa tồn tại.", 'error')
+            return
+        if sys.platform.startswith('win'):
+            os.startfile(folder)
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', folder])
+        else:
+            subprocess.run(['xdg-open', folder])
+
+    def enqueue_log(self, item):
+        self.log_queue.put(item)
+
+    def enqueue_progress(self, item):
+        self.progress_queue.put(item)
+
     def log(self, code, message, tag):
-        if code is None:  # Lỗi chung
+        if code is None:
             iid = self.tree.insert("", "end", values=("", message), tags=(tag,))
         else:
             iid = self.tree.insert("", "end", values=(code, message), tags=(tag,))
-        print("LOGGED IID:", iid, "status:", message, "tag:", tag)  # Debug
+        print("LOGGED IID:", iid, "status:", message, "tag:", tag)
         self.all_iids.append((iid, tag))
         self.tree.yview_moveto(1)
         f = self.filter_var.get()
@@ -158,7 +198,9 @@ class Image2ExcelGUI:
                 self.tree.detach(iid)
 
     def update_progress(self, total, current):
-        self.root.after(0, lambda: self.progress_value.set((current / total) * 100))
+        percent = (current / total) * 100
+        self.root.after(0, lambda: self.progress_value.set(percent))
+        self.root.after(0, lambda: self.status_text.set(f"Progress: {percent:.1f}% | Started: {self.start_time.strftime('%H:%M:%S')}"))
 
     def filter_log(self, *args):
         f = self.filter_var.get()
@@ -180,6 +222,28 @@ class Image2ExcelGUI:
             total, current = self.progress_queue.get_nowait()
             self.root.after(0, lambda t=total, c=current: self.update_progress(t, c))
         self.root.after(50, self.poll_queues)
+
+    def toggle_theme(self, theme):
+        self.root.style.theme_use(theme)
+        self.status_text.set(f"Switched to {theme.capitalize()} Mode")
+
+    @property
+    def product_path(self):
+        if not hasattr(self, '_product_path'):
+            self._product_path = tk.StringVar()
+        return self._product_path
+
+    @property
+    def image_path(self):
+        if not hasattr(self, '_image_path'):
+            self._image_path = tk.StringVar()
+        return self._image_path
+
+    @property
+    def matched_path(self):
+        if not hasattr(self, '_matched_path'):
+            self._matched_path = tk.StringVar()
+        return self._matched_path
 
 def run(core_class=None):
     if core_class is None:
