@@ -1,7 +1,7 @@
 # Image2Excel
 ## Mô tả chức năng
 Phần mềm Image2Excel sẽ:
-1. Lần lượt lấy tên của từng sản phẩm (có dạng mã_sản_phẩm) trong file chứa danh sách tên sản phẩm (txt/xlsm).<br>
+1. Lần lượt lấy tên của từng sản phẩm (có dạng mã_sản_phẩm) trong file chứa danh sách tên sản phẩm (txt/xlsx).<br>
 Tìm trong 1 thư mục chứa rất nhiều ảnh (png/jpg/img) các ảnh có tên file: `mã_sản_phẩm - 01` và `mã_sản_phẩm - 06`. Copy các ảnh này sang một thư mục mới (có tên: ImageMatched) cùng vị trí với thư mục ảnh.(không phải bên trong thư mục ảnh).<br>
 
 2. Tạo 1 file exel xlsm mới với tên dạng: `output_date.xlsm`.(date : là ngày tháng hiện tại).<br>
@@ -27,7 +27,7 @@ Image2Excel chỉ chạy trên Windows.
 ## Yêu cầu lập trình:
 1. Ngôn ngữ: Python
 2. Thư viện xử lý exel: OpenPyxl
-3. GUI: dùng tkinter, định vị các đối tượng theo cú pháp `.pack` để dễ dàng co kéo layout khi cửa sổ thay đổi.
+3. GUI: dùng tkinter.
 4. Tách biệt mã GUI và phần xử lý logic bằng: gui.py và main.py
 5. Image2Excel sẽ được biên dịch sang `.exe` bằng `pyinstaller`. icon ico sẽ được nhúng trực tiếp vào `.exe` và sẽ giải nén vào temp file khi chạy để làm biểu tượng chính của chương trình.
 
@@ -42,5 +42,9 @@ Image2Excel chỉ chạy trên Windows.
 |log frame: hiển thị tiến độ, trạng thái, lỗi|
 
 **Theme:**
-* tối màu (modern dark)
-* Button: màu xanh dương. Khi hover chuột/click chuột -> chuyển sang màu xanh tối hơn
+* Chuyển đổi giữa tối màu (modern dark) và sáng màu (light)
+
+## Plan update:
+1. Chỉnh màu Menu bar đồng bộ với theme
+2. Chỉnh vị trí filter canvas cho đẹp hơn
+3. Thêm phần hướng dẫn sử dụng trong Menu Help
