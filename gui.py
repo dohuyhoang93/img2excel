@@ -14,16 +14,14 @@ class Image2ExcelGUI:
         self.root = tb.Window(themename="solar")
         self.root.title("Image2Excel")
         self.root.minsize(600, 500)
-        # Xác định đường dẫn đến icon.ico
+        # icon setup
         if getattr(sys, 'frozen', False):
-            # Nếu chạy từ .exe, sử dụng sys._MEIPASS
-            base_path = sys._MEIPASS
+            icon_path = os.path.join(sys._MEIPASS, "icon.ico")
         else:
-            # Nếu chạy từ mã nguồn, sử dụng thư mục hiện tại
-            base_path = os.path.abspath(".")
-        
-        icon_path = os.path.join(base_path, "icon.ico")
+            icon_path = "icon.ico"
         self.root.iconbitmap(icon_path)
+
+        # status and progress variables
         self.status_text = tk.StringVar(value="Ready")
         self.progress_value = tk.DoubleVar(value=0)
         self.filter_var = tk.StringVar(value="Tất cả")
@@ -32,10 +30,15 @@ class Image2ExcelGUI:
         self.progress_queue = queue.Queue()
         self.export_folder = None
         self.start_time = None
+
         self.build_ui()
         self.root.after(50, self.poll_queues)
-        self.root.bind('<Control-r>', lambda e: self.run_process())
-        self.root.bind('<Control-s>', lambda e: self.core.stop())
+
+        # keyboard shortcuts
+        self.root.bind('<Control-r>', lambda e: self.on_run())
+        self.root.bind('<Control-p>', lambda e: self.on_pause())
+        self.root.bind('<Control-o>', lambda e: self.on_resume())
+        self.root.bind('<Control-s>', lambda e: self.on_stop())
 
     def build_ui(self):
         main_frame = tb.Labelframe(self.root, text="Controls", padding=10)
@@ -45,6 +48,7 @@ class Image2ExcelGUI:
         self.root.rowconfigure(1, weight=2, minsize=300)
         main_frame.columnconfigure(0, weight=1)
 
+        # input fields
         input_frame = tb.Frame(main_frame)
         input_frame.grid(row=0, column=0, sticky='ew')
         input_frame.columnconfigure(1, weight=1)
@@ -57,23 +61,24 @@ class Image2ExcelGUI:
             tb.Entry(input_frame, textvariable=var).grid(row=i, column=1, sticky='ew', padx=5, pady=5)
             tb.Button(input_frame, text="…", command=cmd).grid(row=i, column=2, padx=5, pady=5)
 
+        # control buttons
         button_frame = tb.Frame(main_frame)
         button_frame.grid(row=1, column=0, sticky='ew', pady=(10, 5))
-        button_commands = {
-            "Run": self.run_process,
-            "Pause": self.core.pause,
-            "Resume": self.core.resume,
-            "Stop": self.core.stop
-        }
-        for i, btn_text in enumerate(["Run", "Pause", "Resume", "Stop"]):
-            btn = tb.Button(button_frame, text=btn_text, command=button_commands[btn_text])
+        for i, (text, cmd) in enumerate([
+            ("Run", self.on_run),
+            ("Pause", self.on_pause),
+            ("Resume", self.on_resume),
+            ("Stop", self.on_stop)
+        ]):
+            btn = tb.Button(button_frame, text=text, command=cmd)
             btn.grid(row=0, column=i, padx=5, sticky='ew')
             button_frame.columnconfigure(i, weight=1)
-            btn.configure(command=lambda x=btn_text: [button_commands[x](), self.set_tooltip(btn, f"{btn_text} (Alt+{btn_text[0]})")])
 
+        # progress bar
         self.progressbar = tb.Progressbar(main_frame, variable=self.progress_value, mode='determinate')
         self.progressbar.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
 
+        # filter combo
         filter_frame = tb.Frame(main_frame)
         filter_frame.grid(row=3, column=0, sticky='ew', pady=(5, 10))
         filter_frame.columnconfigure(0, weight=1)
@@ -81,6 +86,7 @@ class Image2ExcelGUI:
         tb.Combobox(filter_frame, textvariable=self.filter_var, values=["Tất cả", "OK", "Thiếu ảnh", "Lỗi"], state='readonly').grid(row=0, column=1, sticky='w', padx=5)
         self.filter_var.trace('w', self.filter_log)
 
+        # log table and status bar
         table_frame = tb.Labelframe(self.root, text="Log Table", padding=10)
         table_frame.grid(row=1, column=0, sticky='nsew')
         table_frame.columnconfigure(0, weight=1)
@@ -95,16 +101,16 @@ class Image2ExcelGUI:
         scrollbar.grid(row=0, column=1, sticky='ns')
         table_frame.rowconfigure(0, weight=1)
 
-        self.tree = tb.Treeview(self.scrollable_frame, columns=("Code", "Status"), show='headings', height=15)
+        self.tree = tb.Treeview(self.scrollable_frame, columns=("Code", "Status"), show='headings', height=30)
         self.tree.heading("Code", text="Mã SP")
         self.tree.heading("Status", text="Trạng thái")
-        self.tree.column("Code", width=100)
-        self.tree.column("Status", width=300)
+        self.tree.column("Code", width=300)
+        self.tree.column("Status", width=400)
         self.tree.tag_configure('ok', foreground='#00ff00')
         self.tree.tag_configure('warning', foreground='#ffff00')
         self.tree.tag_configure('error', foreground='#ff0000')
         self.tree.grid(row=0, column=0, sticky='nsew')
-        self.scrollable_frame.columnconfigure(0, weight=1)
+        self.scrollable_frame.columnconfigure(0, weight=2)
 
         status_frame = tb.Frame(self.root)
         status_frame.grid(row=2, column=0, sticky='ew')
@@ -113,6 +119,7 @@ class Image2ExcelGUI:
         self.progress_label = tb.Label(status_frame, text="Progress: 0%")
         self.progress_label.grid(row=0, column=1, sticky='e', padx=5)
 
+        # menu
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
         file_menu = tk.Menu(menubar, tearoff=0)
@@ -132,14 +139,30 @@ class Image2ExcelGUI:
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about)
 
+    # wrapper methods to manage status bar
+    def on_run(self):
+        self.run_process()
+        self.status_text.set("Running")
+
+    def on_pause(self):
+        self.core.pause()
+        self.status_text.set("Paused")
+
+    def on_resume(self):
+        self.core.resume()
+        self.status_text.set("Running")
+
+    def on_stop(self):
+        self.core.stop()
+        self.status_text.set("Stopped")
+
     def show_about(self):
         about_window = tk.Toplevel(self.root)
         about_window.title("About Image2Excel")
-        # Áp dụng logic tương tự cho hộp thoại About
         if getattr(sys, 'frozen', False):
             icon_path = os.path.join(sys._MEIPASS, "icon.ico")
         else:
-            icon_path = os.path.join(os.path.abspath("."), "icon.ico")
+            icon_path = "icon.ico"
         about_window.iconbitmap(icon_path)
         about_window.geometry("300x200")
         about_label = tk.Label(about_window, text="Image2Excel\nVersion: 1.0\nDeveloped by: Do Huy Hoang Fujikin Vietnam\nDate: June 26, 2025", justify="center")
@@ -224,7 +247,7 @@ class Image2ExcelGUI:
     def update_progress(self, total, current):
         percent = (current / total) * 100
         self.root.after(0, lambda: self.progress_value.set(percent))
-        self.root.after(0, lambda: self.status_text.set(f"Progress: {percent:.1f}% | Started: {self.start_time.strftime('%H:%M:%S')}"))
+        self.root.after(0, lambda: self.status_text.set(f"Started: {self.start_time.strftime('%H:%M:%S')}"))
         self.root.after(0, lambda: self.progress_label.configure(text=f"Progress: {percent:.1f}%"))
 
     def filter_log(self, *args):
