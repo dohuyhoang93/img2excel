@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 import ttkbootstrap as tb
+import json
 
 class Image2ExcelGUI:
     def __init__(self, core_class):
@@ -30,7 +31,11 @@ class Image2ExcelGUI:
         self.progress_queue = queue.Queue()
         self.export_folder = None
         self.start_time = None
+        self.suffix_vars = [tk.StringVar() for _ in range(4)]
+        self.settings_file = Path(os.getenv('APPDATA')) / "Image2Excel" / "settings.json"
+        self.settings_file.parent.mkdir(exist_ok=True)  # Ensure directory exists
 
+        self.load_settings()
         self.build_ui()
         self.root.after(50, self.poll_queues)
 
@@ -39,6 +44,33 @@ class Image2ExcelGUI:
         self.root.bind('<Control-p>', lambda e: self.on_pause())
         self.root.bind('<Control-o>', lambda e: self.on_resume())
         self.root.bind('<Control-s>', lambda e: self.on_stop())
+
+    def load_settings(self):
+        if self.settings_file.exists():
+            try:
+                with open(self.settings_file, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+                self.product_path.set(settings.get('product_path', ''))
+                self.image_path.set(settings.get('image_path', ''))
+                self.matched_path.set(settings.get('matched_path', ''))
+                for i, suffix in enumerate(settings.get('suffixes', ['', '', '', ''])):
+                    if i < len(self.suffix_vars):
+                        self.suffix_vars[i].set(suffix)
+            except Exception as e:
+                print(f"Error loading settings: {e}")
+
+    def save_settings(self):
+        settings = {
+            'product_path': self.product_path.get(),
+            'image_path': self.image_path.get(),
+            'matched_path': self.matched_path.get(),
+            'suffixes': [var.get().strip() for var in self.suffix_vars]
+        }
+        try:
+            with open(self.settings_file, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
 
     def build_ui(self):
         main_frame = tb.Labelframe(self.root, text="Controls", padding=10)
@@ -61,9 +93,16 @@ class Image2ExcelGUI:
             tb.Entry(input_frame, textvariable=var).grid(row=i, column=1, sticky='ew', padx=5, pady=5)
             tb.Button(input_frame, text="…", command=cmd).grid(row=i, column=2, padx=5, pady=5)
 
+        # suffix inputs
+        suffix_frame = tb.Frame(main_frame)
+        suffix_frame.grid(row=1, column=0, sticky='ew', pady=(5, 5))
+        tb.Label(suffix_frame, text="Image Suffixes:").grid(row=0, column=0, sticky='w', padx=5)
+        for i, var in enumerate(self.suffix_vars):
+            tb.Entry(suffix_frame, textvariable=var, width=10).grid(row=0, column=i+1, padx=5)
+
         # control buttons
         button_frame = tb.Frame(main_frame)
-        button_frame.grid(row=1, column=0, sticky='ew', pady=(10, 5))
+        button_frame.grid(row=2, column=0, sticky='ew', pady=(5, 5))
         for i, (text, cmd) in enumerate([
             ("Run", self.on_run),
             ("Pause", self.on_pause),
@@ -76,11 +115,11 @@ class Image2ExcelGUI:
 
         # progress bar
         self.progressbar = tb.Progressbar(main_frame, variable=self.progress_value, mode='determinate')
-        self.progressbar.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
+        self.progressbar.grid(row=3, column=0, sticky='ew', padx=5, pady=5)
 
         # filter combo
         filter_frame = tb.Frame(main_frame)
-        filter_frame.grid(row=3, column=0, sticky='ew', pady=(5, 10))
+        filter_frame.grid(row=4, column=0, sticky='ew', pady=(5, 10))
         filter_frame.columnconfigure(0, weight=1)
         tb.Label(filter_frame, text="Filter:").grid(row=0, column=0, sticky='w', padx=5)
         tb.Combobox(filter_frame, textvariable=self.filter_var, values=["Tất cả", "OK", "Thiếu ảnh", "Lỗi"], state='readonly').grid(row=0, column=1, sticky='w', padx=5)
@@ -139,8 +178,8 @@ class Image2ExcelGUI:
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about)
 
-    # wrapper methods to manage status bar
     def on_run(self):
+        self.save_settings()
         self.run_process()
         self.status_text.set("Running")
 
@@ -170,6 +209,8 @@ class Image2ExcelGUI:
         close_button = tk.Button(about_window, text="Close", command=about_window.destroy)
         close_button.pack(pady=10)
 
+    
+
     def set_tooltip(self, widget, text):
         tooltip = tk.Toplevel(widget)
         tooltip.withdraw()
@@ -182,23 +223,30 @@ class Image2ExcelGUI:
         path = filedialog.askopenfilename(filetypes=[("Product List", "*.txt *.xlsx")])
         if path:
             self.product_path.set(path)
+            self.save_settings()
 
     def browse_image_folder(self):
         path = filedialog.askdirectory()
         if path:
             self.image_path.set(path)
+            self.save_settings()
 
     def browse_matched_folder(self):
         path = filedialog.askdirectory()
         if path:
             self.matched_path.set(path)
+            self.save_settings()
 
     def run_process(self):
         product = self.product_path.get()
         images = self.image_path.get()
         matched = self.matched_path.get()
+        suffixes = [var.get().strip() for var in self.suffix_vars if var.get().strip()]
         if not product or not images or not matched:
             self.root.after(0, lambda: self.log(None, "⚠️ Chưa chọn đầy đủ đường dẫn.", 'error'))
+            return
+        if not suffixes:
+            self.root.after(0, lambda: self.log(None, "⚠️ Chưa nhập hậu tố nào.", 'error'))
             return
         self.status_text.set(f"Running since {datetime.now().strftime('%H:%M:%S')}")
         self.start_time = datetime.now()
@@ -206,7 +254,7 @@ class Image2ExcelGUI:
         self.tree.delete(*self.tree.get_children())
         self.all_iids.clear()
         self.export_folder = Path(matched) / "Image2Excel_Export"
-        self.core.start(product, images, matched,
+        self.core.start(product, images, matched, suffixes,
                        log_queue=self.enqueue_log,
                        progress_queue=self.enqueue_progress)
 

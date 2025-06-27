@@ -1,5 +1,3 @@
-# import os
-# import queue
 import shutil
 import threading
 import time
@@ -26,7 +24,7 @@ class Image2ExcelCore:
         if self.progress_queue:
             self.progress_queue((total, current))
 
-    def start(self, product_file_path, image_folder, matched_folder, log_queue, progress_queue):
+    def start(self, product_file_path, image_folder, matched_folder, suffixes, log_queue, progress_queue):
         self.product_file = Path(product_file_path)
         self.image_folder = Path(image_folder)
         base_matched = Path(matched_folder)
@@ -37,6 +35,7 @@ class Image2ExcelCore:
             self._log(None, "❌ Lỗi: Thư mục lưu không được trùng với thư mục ảnh gốc.", 'error')
             return
         self.matched_folder = base_matched / "Image2Excel_Export"
+        self.suffixes = suffixes
         self.log_queue = log_queue
         self.progress_queue = progress_queue
         self._pause_event.set()
@@ -74,21 +73,21 @@ class Image2ExcelCore:
 
             wb = Workbook()
             ws = wb.active
-            ws.append(["Mã SP", "Ảnh 01", "Ảnh 06"])
+            headers = ["Mã SP"] + [f"Ảnh {suffix}" for suffix in self.suffixes]
+            ws.append(headers)
             ws.column_dimensions['A'].width = 20
-            ws.column_dimensions['B'].width = 35
-            ws.column_dimensions['C'].width = 35
+            for col in range(2, len(self.suffixes) + 2):
+                ws.column_dimensions[chr(64 + col)].width = 35
 
-            suffixes = ["01", "06"]
-            self.files_by_suffix = {suffix: [] for suffix in suffixes}
+            self.files_by_suffix = {suffix: [] for suffix in self.suffixes}
             for file in self.image_folder.rglob("*"):
                 if file.suffix.lower() in ['.jpg', '.png', '.jpeg']:
                     if self.matched_folder in file.parents:
                         continue
                     name = file.stem.lower()
                     normalized_name = name.replace("-", "").replace("_", "").replace(".", "").replace(" ", "")
-                    for suffix in suffixes:
-                        if normalized_name.endswith(suffix):
+                    for suffix in self.suffixes:
+                        if normalized_name.endswith(suffix.lower()):
                             self.files_by_suffix[suffix].append((file, normalized_name))
 
             total_codes = len(codes)
@@ -99,36 +98,29 @@ class Image2ExcelCore:
                 while not self._pause_event.is_set():
                     time.sleep(0.1)
 
-                img1_path = self._find_image(code, "01")
-                img6_path = self._find_image(code, "06")
-
                 cell = ws.cell(row=idx, column=1)
                 cell.value = code
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
-                if img1_path:
-                    copied1 = shutil.copy(img1_path, self.matched_folder)
-                    excel_img1 = ExcelImage(copied1)
-                    excel_img1.width, excel_img1.height = 200, 200
-                    ws.add_image(excel_img1, f"B{idx}")
-                if img6_path:
-                    copied6 = shutil.copy(img6_path, self.matched_folder)
-                    excel_img6 = ExcelImage(copied6)
-                    excel_img6.width, excel_img6.height = 200, 200
-                    ws.add_image(excel_img6, f"C{idx}")
+                found_images = []
+                for col, suffix in enumerate(self.suffixes, start=2):
+                    img_path = self._find_image(code, suffix)
+                    if img_path:
+                        copied = shutil.copy(img_path, self.matched_folder)
+                        excel_img = ExcelImage(copied)
+                        excel_img.width, excel_img.height = 200, 200
+                        ws.add_image(excel_img, f"{chr(64 + col)}{idx}")
+                        found_images.append(suffix)
 
                 ws.row_dimensions[idx].height = 150
 
-                if img1_path and img6_path:
+                if len(found_images) == len(self.suffixes):
                     self._log(code, f"✅ {code}: OK", 'ok')
-                elif img1_path:
-                    self._log(code, f"⚠️ {code}: Thiếu ảnh .06", 'warning')
-                elif img6_path:
-                    self._log(code, f"⚠️ {code}: Thiếu ảnh .01", 'warning')
                 else:
-                    self._log(code, f"⚠️ {code}: Thiếu cả hai ảnh .01 và .06", 'warning')
+                    missing = [s for s in self.suffixes if s not in found_images]
+                    self._log(code, f"⚠️ {code}: Thiếu ảnh {', '.join(missing)}", 'warning')
 
-                self._progress(total_codes, idx - 1)  # Gửi tiến độ
+                self._progress(total_codes, idx - 1)
 
             out_file = self.matched_folder / f"output_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
             wb.save(out_file)
@@ -142,7 +134,7 @@ class Image2ExcelCore:
         normalized_code = code.replace("-", "").replace("_", "").replace(".", "").replace(" ", "")
         if suffix in self.files_by_suffix:
             for file, normalized_name in self.files_by_suffix[suffix]:
-                if normalized_name.startswith(normalized_code) and normalized_name.endswith(suffix):
+                if normalized_name.startswith(normalized_code) and normalized_name.endswith(suffix.lower()):
                     return file
         return None
 
