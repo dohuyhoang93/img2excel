@@ -1,5 +1,6 @@
 # Image2Excel
 ***Currently, Image2Excel runs only on Windows. It has not been tested on Linux or other platforms.***
+>***[Introduction Page](https://dohuyhoang93.github.io/img2excel/)***
 
 ## Input
 1. Directory (supports local/SMB Shared) containing images.
