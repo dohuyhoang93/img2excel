@@ -1,0 +1,265 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image2Excel Introduction</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+            color: #d1d5db;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 246, 255, 0.3);
+        }
+        h1 {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ff00ff;
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #00f6ff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #ff00ff;
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #00f6ff;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        p, li {
+            font-size: 16px;
+            color: #d1d5db;
+            line-height: 1.6;
+        }
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        ul li, ol li {
+            margin-bottom: 10px;
+        }
+        code {
+            background: rgba(0, 246, 255, 0.1);
+            border: 1px solid #00f6ff;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: #ff00ff;
+            font-family: 'Courier New', monospace;
+        }
+        kbd {
+            background: #1a202c;
+            border: 1px solid #00f6ff;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: #d1d5db;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #00f6ff;
+        }
+        th, td {
+            border: 1px solid #00f6ff;
+            padding: 12px;
+            text-align: left;
+            color: #d1d5db;
+        }
+        th {
+            background: linear-gradient(90deg, #ff00ff, #00f6ff);
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        .neon-button {
+            display: inline-block;
+            background: linear-gradient(90deg, #ff00ff, #00f6ff);
+            color: #1a1a1a;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            box-shadow: 0 0 15px rgba(0, 246, 255, 0.5);
+            transition: box-shadow 0.3s;
+            text-align: center;
+        }
+        .neon-button:hover {
+            box-shadow: 0 0 25px rgba(0, 246, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image2Excel Introduction</h1>
+        
+        <div id="overview">
+            <h2>Overview</h2>
+            <p>Image2Excel is a software tool designed to automate the process of finding and organizing product images, exporting the results to an Excel file. Currently, it runs exclusively on Windows and has not been tested on Linux or other platforms.</p>
+        </div>
+
+        <div id="key-features">
+            <h2>Key Features</h2>
+            <p>Image2Excel provides the following functionality:</p>
+            <ol>
+                <li>Searches for images (png/jpg/jpeg) based on product codes and user-defined suffixes (e.g., <code>product_code-01.jpg</code>) in the input directory, copying matches to an <code>Image2Excel_Export</code> folder.</li>
+                <li>Generates an Excel file (<code>output_date_time.xlsx</code>) with product codes and corresponding images, starting from cell A2.</li>
+            </ol>
+        </div>
+
+        <div id="inputs">
+            <h2>Inputs</h2>
+            <ul>
+                <li>Directory containing images (supports local or SMB Shared).</li>
+                <li>Input file (txt/xlsx, supports local or SMB Shared) with a list of product codes, one per line.</li>
+                <li>Up to four user-defined search suffixes (e.g., <code>01</code>, <code>06</code>).</li>
+            </ul>
+        </div>
+
+        <div id="outputs">
+            <h2>Outputs</h2>
+            <ul>
+                <li><code>Image2Excel_Export</code> directory containing images matched to product codes.</li>
+                <li>Excel file with columns for product codes and their corresponding images.</li>
+            </ul>
+            <p>Example Excel output layout:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>A</th>
+                        <th>B</th>
+                        <th>C</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>abc0123</td><td>abc012-01.jpg</td><td>abc012-06.jpg</td></tr>
+                    <tr><td>abc456</td><td>abc456-01.jpg</td><td>abc456-06.jpg</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="user-guide">
+            <h2>Step-by-Step User Guide</h2>
+            <p>Follow these steps to use Image2Excel effectively:</p>
+            <ol>
+                <li><strong>Launch the Application</strong>:
+                    <ul>
+                        <li>Run <code>Image2Excel.exe</code> on a Windows system.</li>
+                        <li>The GUI will load with previously saved settings from <code>%APPDATA%\Image2Excel\settings.json</code>.</li>
+                    </ul>
+                </li>
+                <li><strong>Select Input Files and Folders</strong>:
+                    <ul>
+                        <li><strong>Product List</strong>: Click the "…" button next to "Product list" to select a <code>.txt</code> or <code>.xlsx</code> file containing product codes (one per line). Alternatively, use "File" > "Open Product List" from the menu.</li>
+                        <li><strong>Image Folder</strong>: Click the "…" button next to "Image folder" to choose a directory containing images (png/jpg/jpeg). You can also use "File" > "Select Image Folder."</li>
+                        <li><strong>Output Folder</strong>: Click the "…" button next to "Output folder" to specify where the <code>Image2Excel_Export</code> folder and Excel file will be saved. Use "File" > "Select Output Folder" as an alternative.</li>
+                    </ul>
+                </li>
+                <li><strong>Enter Image Suffixes</strong>:
+                    <ul>
+                        <li>Input up to four suffixes (e.g., <code>01</code>, <code>06</code>) in the "Image Suffixes" fields.</li>
+                        <li>These suffixes are used to match images (e.g., <code>product_code-01.jpg</code>). Empty fields are ignored.</li>
+                    </ul>
+                </li>
+                <li><strong>Run the Process</strong>:
+                    <ul>
+                        <li>Click the "Run" button or press <kbd>Ctrl+R</kbd>.</li>
+                        <li>The application will:
+                            <ul>
+                                <li>Validate inputs, ensuring all paths are provided and the output folder is not inside the image folder.</li>
+                                <li>Search for images matching each product code with the specified suffixes.</li>
+                                <li>Copy matched images to the <code>Image2Excel_Export</code> folder.</li>
+                                <li>Create an Excel file (<code>output_date_time.xlsx</code>) with product codes and their images.</li>
+                                <li>Display progress in a progress bar and log status (OK, Missing Images, or Errors) in the log table.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>Manage the Process</strong>:
+                    <ul>
+                        <li><strong>Pause</strong>: Click "Pause" or press <kbd>Ctrl+P</kbd> to temporarily halt processing.</li>
+                        <li><strong>Resume</strong>: Click "Resume" or press <kbd>Ctrl+O</kbd> to continue.</li>
+                        <li><strong>Stop</strong>: Click "Stop" or press <kbd>Ctrl+S</kbd> to terminate the process.</li>
+                    </ul>
+                </li>
+                <li><strong>Filter Logs</strong>:
+                    <ul>
+                        <li>Use the "Filter" dropdown to view specific log entries: "All," "OK," "Missing Images," or "Errors."</li>
+                    </ul>
+                </li>
+                <li><strong>Save Settings</strong>:
+                    <ul>
+                        <li>Input paths and suffixes are automatically saved to <code>%APPDATA%\Image2Excel\settings.json</code> when modified or when the process is run.</li>
+                    </ul>
+                </li>
+                <li><strong>View Output</strong>:
+                    <ul>
+                        <li>Use "File" > "Open Export Folder" to open the <code>Image2Excel_Export</code> folder containing matched images and the Excel file.</li>
+                    </ul>
+                </li>
+                <li><strong>Switch Themes</strong>:
+                    <ul>
+                        <li>Navigate to "View" > "Light Mode" or "Dark Mode" to toggle between themes.</li>
+                    </ul>
+                </li>
+                <li><strong>Access Help</strong>:
+                    <ul>
+                        <li>Click "Help" > "About" to view application details, including version and developer information.</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="https://github.com/your-username/image2excel-docs" class="neon-button">View Source on GitHub</a>
+        </div>
+    </div>
+</body>
+</html>
