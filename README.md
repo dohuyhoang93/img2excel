@@ -1,51 +1,38 @@
 # Image2Excel
-## Mô tả chức năng
-Phần mềm Image2Excel sẽ:
-1. Lần lượt lấy tên của từng sản phẩm (có dạng mã_sản_phẩm) trong file chứa danh sách tên sản phẩm (txt/xlsx).<br>
-Tìm trong 1 thư mục chứa rất nhiều ảnh (png/jpg/img) các ảnh có tên file: `mã_sản_phẩm - 01` và `mã_sản_phẩm - 06`. Copy các ảnh này sang một thư mục mới (có tên: Image2Excel_Export) so người dùng chỉ định.(Không được phép trùng hoặc bên trong thư mục ảnh cần quét).<br>
+***Currently, Image2Excel runs only on Windows. It has not been tested on Linux or other platforms.***
 
-2. Tạo 1 file exel xlsm mới với tên dạng: `output_date_time.xlsx`.(date : là ngày tháng hiện tại).<br>
-Lần lượt dán từng: mã sản phẩm và cặp ảnh mã_sản_phẩm - 01; mã_sản_phẩm - 06 vào các cell tại cùng 1 hàng. Sau đó lưu file excel. Bắt đầu từ A2. Lặp lại cho tất cả mã tên sản phẩm có trong file danh sách tên mã sản phẩm.<br>
+## Input
+1. Directory (supports local/SMB Shared) containing images.
+2. Input file (txt/xlsx, supports local/SMB Shared) containing a list of product codes, one per line.
+3. Search suffixes: ex: `01`, `06`.
 
-Ví dụ bố cụ exel đầu ra:<br>
+## Functionality
+The Image2Excel software will:
+1. Sequentially process each product code (format: `product_code`) from the input file (txt/xlsx).  
+   It searches the specified image directory (png/jpg/jpeg) for files named `product_code - suffix`. These images are copied to a new user-specified directory named `Image2Excel_Export`. (This directory must not overlap with or be inside the scanned image directory; otherwise, Image2Excel will not run and will display a warning.)  
+2. Create a new Excel file named `output_date_time.xlsx` (where `date_time` is the current date and time).  
+   For each product code, insert the `product_code` and its corresponding images (`product_code - suffix_01`, `product_code - suffix_06`) into cells on the same row, starting from cell A2. Save the Excel file.  
+   Repeat for all product codes in the input file.
+
+## Output
+1. A directory containing images that match the product codes from the input file.
+2. An Excel file containing columns for product code, image `01`, and image `06` for all product codes in the input file.
+
+Example Excel output layout:
 |A|B|C|D|E|
 |---|---|---|---|---|
 ||||||
 |abc0123|abc012-01.jpg|abc012-06.jpg|
 |abc456|abc456-01.jpg|abc456-06.jpg|
 
-**Image2Excel chỉ chạy trên Windows.**
-
-## Input
-1. Thư mục (hỗ trợ local/SMB Shared) chứa rất nhiều ảnh
-2. File danh sách đầu vào (txt/xlsx cũng hỗ trợ local/SMB Shared) chứa: danh sách mã các sản phẩm. Mỗi mã 1 dòng.
-
-## Output
-1. Thư mục chứa các ảnh đã tìm ra khớp với tên mã sản phẩm của tất cả mã trong file danh sách.
-2. File excel đã chứa mã_sản_phẩm - ảnh 01 - ảnh 06 của tất cả mã sản phẩm trong file danh sách.
-
-## Yêu cầu lập trình:
-1. Ngôn ngữ: Python
-2. Thư viện xử lý exel: OpenPyxl
-3. GUI: dùng tkinter.
-4. Tách biệt mã GUI và phần xử lý logic bằng: gui.py và main.py
-5. Image2Excel sẽ được biên dịch sang `.exe` bằng `pyinstaller`. icon ico sẽ được nhúng trực tiếp vào `.exe` và sẽ giải nén vào temp file khi chạy để làm biểu tượng chính của chương trình.
-
-### Mô tả GUI
-**Layout sẽ như sau:**
-
-|Object1|Object2|Object3|
-|---|---|---|
-|label: select product list|path view entry (hiện path tới file txt/xlsm)|button: Browser (mở dialog)|
-|label: select image folder|path view entry (hiện path tới thư mục ảnh gốc)|button: Browser (mở dialog)|
-|button: Run|button: Pause|button: Stop|
-|log frame: hiển thị tiến độ, trạng thái, lỗi|
-
+## Other
 **Theme:**
-* Chuyển đổi giữa tối màu (modern dark) và sáng màu (light)
+ * Toggle between dark and light themes.<br>
 
-## Plan update:
-1. Chỉnh màu Menu bar đồng bộ với theme
-2. Chỉnh vị trí filter canvas cho đẹp hơn
-3. Thêm phần hướng dẫn sử dụng trong Menu Help
-4. Cho user tùy chỉnh các hậu tố tìm kiếm: `01`, `06` ngay trên GUI.
+**JSON**
+ * User settings are saved in a JSON file located at: `%APPDATA%\Image2Excel\settings.json`
+
+## Planned Updates
+1. Synchronize Menu bar color with the selected theme.
+2. Improve the positioning of the filter canvas for better aesthetics.
+3. Add a user guide to the Help menu.
