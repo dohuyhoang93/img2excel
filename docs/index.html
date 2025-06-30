@@ -46,220 +46,201 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
-            color: #d1d5db;
+            line-height: 1.6;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            background-color: #0a0a1a;
+            color: #e0e0ff;
+        }
+        .header {
+            background: linear-gradient(90deg, #2a004d, #0a1a1a);
+            padding: 10px 20px;
+            text-align: center;
+            box-shadow: 0 0 20px #d400ff;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(255, 255, 255, 0.1) 5px, rgba(255, 255, 255, 0.1) 10px);
+            animation: move 5s linear infinite;
+        }
+        @keyframes move {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .header pre {
+            margin: 0;
+            color: #00e6ff;
+            text-shadow: 0 0 10px #d400ff;
         }
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(0, 246, 255, 0.3);
+            padding: 20px 15px;
         }
-        h1 {
-            font-size: 36px;
-            font-weight: bold;
-            color: #ff00ff;
-            text-shadow: 0 0 10px #ff00ff, 0 0 20px #00f6ff;
-            text-align: center;
-            margin-bottom: 20px;
+        h1, h2 {
+            color: #d400ff;
+            padding: 10px;
+            border: 2px solid #00e6ff;
+            border-radius: 5px;
+            background-color: #1a0033;
+            text-shadow: 0 0 10px #d400ff, 0 0 20px #00e6ff;
         }
-        h2 {
-            font-size: 24px;
-            font-weight: 600;
-            color: #ff00ff;
-            text-shadow: 0 0 10px #ff00ff, 0 0 20px #00f6ff;
-            margin-top: 30px;
-            margin-bottom: 15px;
+        h1::before, h2::before {
+            content: "┏━ ";
+            color: #00e6ff;
         }
-        p, li {
-            font-size: 16px;
-            color: #d1d5db;
-            line-height: 1.6;
+        h1::after, h2::after {
+            content: " ━┓";
+            color: #00e6ff;
         }
-        ul, ol {
-            margin-left: 20px;
-            margin-bottom: 15px;
+        pre.ascii-art {
+            font-family: monospace;
+            white-space: pre;
+            background: #1a0033;
+            padding: 10px;
+            border: 1px solid #00e6ff;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: #d400ff;
+            text-shadow: 0 0 5px #d400ff;
         }
-        ul li, ol li {
-            margin-bottom: 10px;
+        ul {
+            list-style: none;
+            padding: 0;
         }
-        code {
-            background: rgba(0, 246, 255, 0.1);
-            border: 1px solid #00f6ff;
-            padding: 2px 4px;
-            border-radius: 4px;
-            color: #ff00ff;
-            font-family: 'Courier New', monospace;
-        }
-        kbd {
-            background: #1a202c;
-            border: 1px solid #00f6ff;
-            padding: 2px 4px;
-            border-radius: 4px;
-            color: #d1d5db;
+        li::before {
+            content: "┣━ ";
+            color: #00e6ff;
         }
         table {
-            border-collapse: collapse;
             width: 100%;
-            margin-bottom: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid #00f6ff;
+            border-collapse: collapse;
+            margin: 10px 0;
+            background: #1a0033;
+            box-shadow: 0 0 15px #00e6ff;
         }
         th, td {
-            border: 1px solid #00f6ff;
-            padding: 12px;
+            border: 1px solid #00e6ff;
+            padding: 8px;
             text-align: left;
-            color: #d1d5db;
+            color: #e0e0ff;
         }
         th {
-            background: linear-gradient(90deg, #ff00ff, #00f6ff);
-            color: #1a1a1a;
-            font-weight: 600;
+            background-color: #d400ff;
+            color: #0a0a1a;
+            text-shadow: 0 0 5px #00e6ff;
         }
-        .neon-button {
+        .github-button {
             display: inline-block;
-            background: linear-gradient(90deg, #ff00ff, #00f6ff);
-            color: #1a1a1a;
             padding: 10px 20px;
-            border-radius: 8px;
+            background: linear-gradient(45deg, #d400ff, #00e6ff);
+            color: #0a0a1a;
+            font-weight: bold;
             text-decoration: none;
-            box-shadow: 0 0 15px rgba(0, 246, 255, 0.5);
-            transition: box-shadow 0.3s;
-            text-align: center;
+            border-radius: 5px;
+            border: 2px solid #00e6ff;
+            box-shadow: 0 0 10px #d400ff, 0 0 20px #00e6ff;
+            transition: all 0.3s ease;
         }
-        .neon-button:hover {
-            box-shadow: 0 0 25px rgba(0, 246, 255, 0.8);
+        .github-button:hover {
+            background: linear-gradient(45deg, #00e6ff, #d400ff);
+            box-shadow: 0 0 20px #d400ff, 0 0 30px #00e6ff;
+            transform: scale(1.05);
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.5em; }
+            h2 { font-size: 1.2em; }
+            table, th, td { font-size: 0.9em; }
+            .github-button { padding: 8px 16px; font-size: 0.9em; }
+        }
+        @media (max-width: 480px) {
+            h1 { font-size: 1.2em; }
+            h2 { font-size: 1em; }
+            table, th, td { font-size: 0.8em; }
+            .github-button { padding: 6px 12px; font-size: 0.8em; }
         }
     </style>
 </head>
 <body>
+    <header class="header">
+        <pre>
+▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌
+▐***██╗███╗***███╗*██████╗*****██████╗*****███████╗██╗**██╗███████╗██╗*****▌
+▐***██║████╗*████║██╔════╝*****╚════██╗****██╔════╝╚██╗██╔╝██╔════╝██║*****▌
+▐***██║██╔████╔██║██║**███╗*****█████╔╝****█████╗***╚███╔╝*█████╗**██║*****▌
+▐***██║██║╚██╔╝██║██║***██║****██╔═══╝*****██╔══╝***██╔██╗*██╔══╝**██║*****▌
+▐***██║██║*╚═╝*██║╚██████╔╝****███████╗****███████╗██╔╝*██╗███████╗███████╗▌
+▐***╚═╝╚═╝*****╚═╝*╚═════╝*****╚══════╝****╚══════╝╚═╝**╚═╝╚══════╝╚══════╝▌
+▐▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▌
+        </pre>
+    </header>
     <div class="container">
         <h1>Image2Excel Introduction</h1>
         
-        <div id="overview">
-            <h2>Overview</h2>
-            <p>Image2Excel is a software tool designed to automate the process of finding and organizing product images, exporting the results to an Excel file. Currently, it runs exclusively on Windows and has not been tested on Linux or other platforms.</p>
-        </div>
+        <h2>Overview</h2>
+        <p>Image2Excel automates finding and organizing product images, exporting results to Excel. Runs on Windows; untested on Linux/other platforms.</p>
 
-        <div id="key-features">
-            <h2>Key Features</h2>
-            <p>Image2Excel provides the following functionality:</p>
-            <ol>
-                <li>Searches for images (png/jpg/jpeg) based on product codes and user-defined suffixes (e.g., <code>product_code-01.jpg</code>) in the input directory, copying matches to an <code>Image2Excel_Export</code> folder.</li>
-                <li>Generates an Excel file (<code>output_date_time.xlsx</code>) with product codes and corresponding images, starting from cell A2.</li>
-            </ol>
-        </div>
+        <h2>Key Features</h2>
+        <ul>
+            <li>Searches for images (png/jpg/jpeg) by product codes and suffixes (e.g., product_code-01.jpg), copies to Image2Excel_Export.</li>
+            <li>Generates Excel file (output_date_time.xlsx) with product codes and images from cell A2.</li>
+        </ul>
 
-        <div id="inputs">
-            <h2>Inputs</h2>
-            <ul>
-                <li>Directory containing images (supports local or SMB Shared).</li>
-                <li>Input file (txt/xlsx, supports local or SMB Shared) with a list of product codes, one per line.</li>
-                <li>Up to four user-defined search suffixes (e.g., <code>01</code>, <code>06</code>).</li>
-            </ul>
-        </div>
+        <h2>Inputs</h2>
+        <ul>
+            <li>Directory with images (local/SMB Shared).</li>
+            <li>Input file (txt/xlsx, local/SMB Shared) with product codes (one per line).</li>
+            <li>Up to four search suffixes (e.g., 01, 06).</li>
+        </ul>
 
-        <div id="outputs">
-            <h2>Outputs</h2>
-            <ul>
-                <li><code>Image2Excel_Export</code> directory containing images matched to product codes.</li>
-                <li>Excel file with columns for product codes and their corresponding images.</li>
-            </ul>
-            <p>Example Excel output layout:</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>A</th>
-                        <th>B</th>
-                        <th>C</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td>abc0123</td><td>abc012-01.jpg</td><td>abc012-06.jpg</td></tr>
-                    <tr><td>abc456</td><td>abc456-01.jpg</td><td>abc456-06.jpg</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <h2>Outputs</h2>
+        <ul>
+            <li>Image2Excel_Export directory with matched images.</li>
+            <li>Excel file with product codes and images.</li>
+        </ul>
+        <p>Example Excel output:</p>
+        <table>
+            <tr><th>A</th><th>B</th><th>C</th></tr>
+            <tr><td>abc0123</td><td>abc012-01.jpg</td><td>abc012-06.jpg</td></tr>
+            <tr><td>abc456</td><td>abc456-01.jpg</td><td>abc456-06.jpg</td></tr>
+        </table>
 
-        <div id="user-guide">
-            <h2>Step-by-Step User Guide</h2>
-            <p>Follow these steps to use Image2Excel effectively:</p>
-            <ol>
-                <li><strong>Launch the Application</strong>:
-                    <ul>
-                        <li>Run <code>Image2Excel.exe</code> on a Windows system.</li>
-                        <li>The GUI will load with previously saved settings from <code>%APPDATA%\Image2Excel\settings.json</code>.</li>
-                    </ul>
-                </li>
-                <li><strong>Select Input Files and Folders</strong>:
-                    <ul>
-                        <li><strong>Product List</strong>: Click the "…" button next to "Product list" to select a <code>.txt</code> or <code>.xlsx</code> file containing product codes (one per line). Alternatively, use "File" > "Open Product List" from the menu.</li>
-                        <li><strong>Image Folder</strong>: Click the "…" button next to "Image folder" to choose a directory containing images (png/jpg/jpeg). You can also use "File" > "Select Image Folder."</li>
-                        <li><strong>Output Folder</strong>: Click the "…" button next to "Output folder" to specify where the <code>Image2Excel_Export</code> folder and Excel file will be saved. Use "File" > "Select Output Folder" as an alternative.</li>
-                    </ul>
-                </li>
-                <li><strong>Enter Image Suffixes</strong>:
-                    <ul>
-                        <li>Input up to four suffixes (e.g., <code>01</code>, <code>06</code>) in the "Image Suffixes" fields.</li>
-                        <li>These suffixes are used to match images (e.g., <code>product_code-01.jpg</code>). Empty fields are ignored.</li>
-                    </ul>
-                </li>
-                <li><strong>Run the Process</strong>:
-                    <ul>
-                        <li>Click the "Run" button or press <kbd>Ctrl+R</kbd>.</li>
-                        <li>The application will:
-                            <ul>
-                                <li>Validate inputs, ensuring all paths are provided and the output folder is not inside the image folder.</li>
-                                <li>Search for images matching each product code with the specified suffixes.</li>
-                                <li>Copy matched images to the <code>Image2Excel_Export</code> folder.</li>
-                                <li>Create an Excel file (<code>output_date_time.xlsx</code>) with product codes and their images.</li>
-                                <li>Display progress in a progress bar and log status (OK, Missing Images, or Errors) in the log table.</li>
-                            </ul>
-                        </li>
-                    </ul>
-                </li>
-                <li><strong>Manage the Process</strong>:
-                    <ul>
-                        <li><strong>Pause</strong>: Click "Pause" or press <kbd>Ctrl+P</kbd> to temporarily halt processing.</li>
-                        <li><strong>Resume</strong>: Click "Resume" or press <kbd>Ctrl+O</kbd> to continue.</li>
-                        <li><strong>Stop</strong>: Click "Stop" or press <kbd>Ctrl+S</kbd> to terminate the process.</li>
-                    </ul>
-                </li>
-                <li><strong>Filter Logs</strong>:
-                    <ul>
-                        <li>Use the "Filter" dropdown to view specific log entries: "All," "OK," "Missing Images," or "Errors."</li>
-                    </ul>
-                </li>
-                <li><strong>Save Settings</strong>:
-                    <ul>
-                        <li>Input paths and suffixes are automatically saved to <code>%APPDATA%\Image2Excel\settings.json</code> when modified or when the process is run.</li>
-                    </ul>
-                </li>
-                <li><strong>View Output</strong>:
-                    <ul>
-                        <li>Use "File" > "Open Export Folder" to open the <code>Image2Excel_Export</code> folder containing matched images and the Excel file.</li>
-                    </ul>
-                </li>
-                <li><strong>Switch Themes</strong>:
-                    <ul>
-                        <li>Navigate to "View" > "Light Mode" or "Dark Mode" to toggle between themes.</li>
-                    </ul>
-                </li>
-                <li><strong>Access Help</strong>:
-                    <ul>
-                        <li>Click "Help" > "About" to view application details, including version and developer information.</li>
-                    </ul>
-                </li>
-            </ol>
-        </div>
+        <h2>Step-by-Step User Guide</h2>
+        <ol>
+            <li><strong>Launch Application:</strong> Run Image2Excel.exe on Windows. GUI loads settings from %APPDATA%\Image2Excel\settings.json.</li>
+            <li><strong>Select Inputs:</strong>
+                <ul>
+                    <li><strong>Product List:</strong> Click "…" or "File" > "Open Product List" to select txt/xlsx with product codes.</li>
+                    <li><strong>Image Folder:</strong> Click "…" or "File" > "Select Image Folder" for image directory.</li>
+                    <li><strong>Output Folder:</strong> Click "…" or "File" > "Select Output Folder" for export location.</li>
+                </ul>
+            </li>
+            <li><strong>Enter Suffixes:</strong> Input up to four suffixes (e.g., 01, 06) in "Image Suffixes" fields.</li>
+            <li><strong>Run Process:</strong> Click "Run" (Ctrl+R). Validates inputs, searches images, copies to Image2Excel_Export, creates Excel file, shows progress/logs.</li>
+            <li><strong>Manage Process:</strong>
+                <ul>
+                    <li><strong>Pause:</strong> Click "Pause" (Ctrl+P).</li>
+                    <li><strong>Resume:</strong> Click "Resume" (Ctrl+O).</li>
+                    <li><strong>Stop:</strong> Click "Stop" (Ctrl+S).</li>
+                </ul>
+            </li>
+            <li><strong>Filter Logs:</strong> Use "Filter" dropdown: All, OK, Missing Images, Errors.</li>
+            <li><strong>Save Settings:</strong> Paths/suffixes auto-saved to settings.json on change/run.</li>
+            <li><strong>View Output:</strong> "File" > "Open Export Folder" to access images/Excel.</li>
+            <li><strong>Switch Themes:</strong> "View" > "Light Mode" or "Dark Mode".</li>
+            <li><strong>Access Help:</strong> "Help" > "About" for version/developer info.</li>
+        </ol>
 
-        <div style="margin-top: 20px; text-align: center;">
-            <a href="https://github.com/dohuyhoang93/img2excel/" class="neon-button">View Source on GitHub</a>
-        </div>
+        <h2>View Source</h2>
+        <p><a href="https://github.com" class="github-button">View Source on GitHub</a></p>
     </div>
 </body>
 </html>
